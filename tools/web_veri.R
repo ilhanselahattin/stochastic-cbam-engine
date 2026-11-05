@@ -237,8 +237,13 @@ yaz(file.path(HEDEF, "ornekler.json"), json(list(
   vakalar = lapply(vakalar, function(v) do.call(ornek, unname(v))))))
 
 # --- Yaz ya da karsilastir ---------------------------------------------------
+#  ornekler.json --kontrol disinda: belirsizlik yuzdelikleri exp()/log() ile
+#  hesaplanir ve isletim sistemine gore son basamakta farklilasabilir. Bu dosya
+#  yalnizca test girdisidir; eskirse tests/test_web.mjs zaten kalir.
+KONTROL_DISI <- file.path(HEDEF, "ornekler.json")
 farkli <- character(0)
 for (yol in names(uretilen)) {
+  if (kontrol && yol %in% KONTROL_DISI) next
   eski <- if (file.exists(yol)) paste0(paste(readLines(yol, encoding = "UTF-8", warn = FALSE),
                                              collapse = "\n"), "\n") else NA
   if (!identical(eski, uretilen[[yol]])) {
@@ -256,7 +261,8 @@ if (kontrol) {
     cat(paste0("  ", c(farkli, eski_dosyalar), "\n"), sep = "")
     quit(status = 1)
   }
-  cat(sprintf("data/web guncel (%d dosya).\n", length(uretilen)))
+  cat(sprintf("data/web guncel (%d dosya; ornekler.json haric).\n",
+              length(uretilen) - length(KONTROL_DISI)))
 } else {
   if (length(eski_dosyalar)) file.remove(eski_dosyalar)
   cat(sprintf("data/web: %d dosya, %d degisti.\n", length(uretilen), length(farkli)))
