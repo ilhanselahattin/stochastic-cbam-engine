@@ -4,6 +4,62 @@ Bu projede [semantik sürümleme](https://semver.org/lang/tr/) kullanılır.
 
 ---
 
+## [1.1.0] — yayımlanmadı
+
+**Önemli düzeltme: v1.0.0, varsayılan değerle yapılan hesaplarda CBAM
+maliyetini düşük gösteriyordu.** Mevzuatın zorunlu kıldığı mark-up
+uygulanmıyordu; Türkiye için sapma medyan %16 (2026) ile %35 (2028)
+arasındaydı. Örnek: CN 72081000, 250.000 t, 2030 — **34.449.000 EUR değil,
+49.017.000 EUR.** Kendi ölçtüğü yoğunlukla (`--yogunluk`) hesap yapan
+kullanıcılar bu hatadan etkilenmedi.
+
+Bulgular, resmî Excel dosyalarının motordan bağımsız bir okuyucuyla
+karşılaştırıldığı ve beklenen değerlerin rehberlerden yeniden türetildiği bir
+doğrulamadan (2026-10-21) geldi.
+
+### Düzeltildi
+
+| # | Hata | Düzeltme |
+|---|---|---|
+| **D9** | Varsayılan değere mark-up eklenmiyordu | %10 (2026), %20 (2027), %30 (2028+), gübre %1 — Rehber No. 3 s.113 |
+| **D10** | Rota ve yıla bağlı benchmark'larda hep ilk değer kullanılıyordu (2028+ 176 CN) | 1.804 resmî değerin tamamı; ülke rotası ve yıla göre seçim; `--rota` |
+| D5 | 2026 öncesi yıl için sahte maliyet gösteriliyordu | Açık hata mesajı |
+| D3 | Menşede ödenen karbon belirsizlik simülasyonunda düşülmüyordu | Simülasyona aktarıldı |
+| D4 | Tam 50 ton de minimis'ten muaf sayılmıyordu | `<= 50` |
+| — | `--urun` yolu dolaylı emisyonu atlıyordu (sinter: `--cn` ile farklı sonuç) | İki yol tek fonksiyondan besleniyor (`cbam_default_see()`) |
+| — | HTML raporda `--cn` yolunun resmî değerleri "kullanıcı girdisi" görünüyordu | Kaynak ve mark-up raporda gösteriliyor |
+| **D11** | Ülke sayfasında değeri "-" olan ya da hiç olmayan mal için hesap duruyordu ("değer yok") | Kural gereği "Other countries and territories" tablosu kullanılıyor (Rehber No. 3 s.114). Örnek: Türkiye'de çimento |
+| — | 8 haneli kod 10 haneli TARIC kodlarına ayrıldığında (beyaz/gri klinker) eşleşme yoktu | 10 haneli kod destekleniyor; 8 haneli kod birden fazla TARIC'e ayrılıyorsa seçenekler listeleniyor |
+| — | Çıktılar yükümlülük payını "CBAM faktörü" diye yazıyordu (2030: %48,5) | Resmî CBAM faktörü (ücretsiz tahsisatın kalan payı, 2030: %51,5) ve yükümlülük payı ayrı ayrı yazılıyor (Rehber No. 4 Tablo 2-1) |
+| — | HTML rapor de minimis muafiyetini açıklamıyordu; resmî tablolarla yapılan hesabı "DOĞRULANMADI" gösteriyordu; kur girilmeyince "1,00 TRY/EUR" yazıyordu | Muafiyet nedeni ve eşik aşılırsa yük gösteriliyor; doğrulama durumu ve kur doğru |
+| — | `run_cbam_mc()` doğrudan çağrıldığında 2026 öncesi yılı kabul ediyordu; karbon fiyatı 0 ve ödenen karbonla simülasyon NaN üretiyordu | İkisi de giderildi |
+
+### Eklendi
+
+- **Tarayıcı hesaplayıcısı** (`hesaplayici.js`, `index.html`, `R/web.R`): sunucusuz, motorun kendi kodunu
+  WebR ile çalıştırır; `<div data-cbam-hesaplayici>` ile başka sitelere gömülebilir. Yalnızca varsayılan değerler; kendi ölçüm değeri ve rota
+  seçimi ileride eklenecek
+- Komut satırında kendi değer girilip `--rota` verilmezse rota varsayımı uyarısı
+- `cbam_default_markup()`, `cbam_default_see()`
+- `cbam_benchmark_by_cn()` için `yil` ve `rota` parametreleri
+- `--rota` komut satırı seçeneği
+- **Tüm menşe ülkeler:** varsayılan değer tablosu Türkiye'den 121 ülke +
+  "Other countries and territories"a genişledi (11.670 satır, aynı resmî
+  dosyadan). `--ulke <ad>`, `--ulke diger`, `--ulkeler`
+- AB ETS'ye bağlı ülkeler (İzlanda, Norveç, Lihtenştayn, İsviçre) ve Ek III
+  bölgeleri için "CBAM uygulanmaz" mesajı
+- `cimento-klinker` ürünü gri klinkerin TARIC koduna (2523100090) bağlandı
+- Veri paketi etiketi `params-2026.10`
+- **Rapor:** yıllara göre maliyet grafiği (2026–2034, her yıl o yılın mark-up'ı ve
+  benchmark'ı), kendi ölçümüyle maliyet (başabaş) grafiği, her grafiğin altında
+  tablo görünümü, "Varsayımlar" kutusu (girilmeyen her parametre listelenir),
+  `--not` seçeneği. Rapor çevrimdışı kalır (betik ya da dış kaynak yok).
+- `cbam_yillik_yol()`; varsayılan değer tablosu önbellekte (arama ~25 ms → 2 ms)
+- 57 yeni test (toplam 234); Rehber No. 4'te basılı örnekler (Tablo 2-3, 2-4)
+  test altında
+
+---
+
 ## [1.0.0] — 2026-08-25
 
 İlk kararlı sürüm. Çekirdek hesap resmî Avrupa Komisyonu kaynaklarından

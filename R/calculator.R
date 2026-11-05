@@ -43,6 +43,9 @@
 #' @param reference \code{cbam_product()} ciktisi ya da NULL. Verildiginde
 #'   kullanilan degerlerin kaynagi ciktida gosterilir ve dogrulanmamis veri
 #'   icin uyari basilir.
+#' @param kaynaklar \code{reference} yokken (CN kodu yolu) degerlerin
+#'   kaynagi: \code{list(yogunluk = , benchmark = )}. Raporda gosterilir;
+#'   verilmezse "kullanici girdisi" yazilir.
 #' @param ... \code{run_cbam_mc()} uzerinden \code{simulate_market()}'e
 #'   aktarilan ek parametreler (carbon_sigma, fx_mu, fx_sigma, rho).
 #' @return \code{cbam_estimate} sinifinda liste.
@@ -66,6 +69,7 @@ cbam_estimate <- function(quantity,
                           reference = NULL,
                           functional_unit = NULL,
                           ei_label = "dogrudan",
+                          kaynaklar = NULL,
                           ...) {
   stopifnot(is.numeric(quantity), is.numeric(ei_direct), is.numeric(benchmark))
   if (length(quantity) != 1 || length(ei_direct) != 1 || length(benchmark) != 1) {
@@ -76,6 +80,15 @@ cbam_estimate <- function(quantity,
   if (benchmark < 0) stop("benchmark negatif olamaz.")
   if (carbon_price < 0) stop("carbon_price negatif olamaz.")
   if (fx_rate <= 0) stop("fx_rate pozitif olmali.")
+  gecerli_yil(year)
+  # Gecis doneminde (2023-2025) yalnizca raporlama vardi; mali yukumluluk
+  # 2026'da basliyor (D5). Ucretsiz tahsisat payi %100 olsa bile benchmark
+  # ustu emisyon formulde sertifikaya donusurdu - v1.0.0 2025 icin boyle
+  # sahte bir maliyet gosteriyordu. Sessiz sifir yerine acik hata.
+  if (length(year) != 1 || year < 2026) {
+    stop(paste0("year 2026 ya da sonrasi olmali: CBAM mali yukumlulugu ",
+                "kesin donemle (2026) baslar, oncesinde yalnizca raporlama vardir."))
+  }
 
   # --- Deterministik hesap ---------------------------------------------
   ei_total <- if (isTRUE(include_indirect)) ei_direct + ei_indirect else ei_direct
@@ -116,6 +129,8 @@ cbam_estimate <- function(quantity,
       base_year          = base_year,
       carbon_price_0     = carbon_price,
       fx_0               = fx_rate,
+      carbon_price_paid    = carbon_price_paid,
+      cbam_reference_price = cbam_reference_price,
       seed               = seed,
       inflation_tr       = inflation_tr,
       inflation_eu       = inflation_eu,
@@ -148,6 +163,7 @@ cbam_estimate <- function(quantity,
         horizon = max(year - base_year, 0), n_sims = n_sims, seed = seed,
         inflation_tr = inflation_tr, inflation_eu = inflation_eu,
         ei_label = ei_label,
+        kaynaklar = kaynaklar,
         functional_unit = if (is.null(functional_unit)) {
           list(birim = "ton urun", standart = TRUE)
         } else {
@@ -157,6 +173,49 @@ cbam_estimate <- function(quantity,
     ),
     class = "cbam_estimate"
   )
+}
+
+#' Ayni girdilerle 2026-2034 maliyet yolu
+#'
+#' Her yil icin o yilin mevzuat parametreleri kullanilir: CBAM faktoru,
+#' varsayilan degerin mark-up'i (yogunluk verilmediyse) ve yila bagli
+#' benchmark. Karbon fiyati her yil ayni tutulur - grafik yalnizca mevzuat
+#' takviminin etkisini gosterir, fiyat belirsizligini degil.
+#'
+#' @param quantity Miktar (ton).
+#' @param cn_kodu CN kodu; NULL ise \code{ei} ve \code{benchmark} sabit kalir.
+#' @param ei Kullanicinin olctugu yogunluk; NULL ise varsayilan + mark-up.
+#' @param benchmark Elle verilmis benchmark; NULL ise tablodan, yila gore.
+#' @return \code{yil}, \code{faktor}, \code{yogunluk}, \code{markup},
+#'   \code{benchmark}, \code{sertifika}, \code{cost_eur} sutunlu data.frame.
+cbam_yillik_yol <- function(quantity, cn_kodu = NULL, ulke = "Turkiye",
+                            ei = NULL, benchmark = NULL, sutun = "B",
+                            rota = NULL, carbon_price = 80,
+                            carbon_price_paid = 0, cbam_reference_price = NULL,
+                            ei_indirect = 0, include_indirect = FALSE,
+                            yillar = 2026:2034) {
+  do.call(rbind, lapply(yillar, function(y) {
+    # Varsayilan deger satiri, kullanici kendi yogunlugunu verse bile ulkenin
+    # benchmark ROTASINI tasir; manset hesapla ayni rota kullanilmali.
+    see <- if (!is.null(cn_kodu)) {
+      tryCatch(cbam_default_see(cn_kodu, y, ulke), error = function(e) NULL)
+    } else NULL
+    e <- if (!is.null(ei)) ei else if (!is.null(see)) see$deger else NA_real_
+    r <- if (!is.null(rota)) rota else if (!is.null(see)) see$rota else NULL
+    b <- if (!is.null(benchmark)) benchmark else
+      cbam_benchmark_by_cn(cn_kodu, sutun, yil = y, rota = r)$benchmark
+    est <- cbam_estimate(quantity, e, b, year = y, carbon_price = carbon_price,
+                         carbon_price_paid = carbon_price_paid,
+                         cbam_reference_price = cbam_reference_price,
+                         ei_indirect = ei_indirect,
+                         include_indirect = include_indirect,
+                         uncertainty = FALSE)
+    data.frame(yil = y, faktor = cbam_factor_official(y), yogunluk = e,
+               markup = if (is.null(ei) && !is.null(see)) see$markup else 0,
+               benchmark = b,
+               sertifika = est$deterministic$certificates,
+               cost_eur = est$deterministic$cost_eur)
+  }))
 }
 
 #' @export
@@ -218,6 +277,9 @@ print.cbam_estimate <- function(x, ...) {
       cat(sprintf("  %sGecerlilik: %s\n", strrep(" ", 27),
                   r$benchmark_gecerlilik))
     }
+    if (!is.null(r$benchmark_not) && nzchar(r$benchmark_not)) {
+      cat(sprintf("  %sNot: %s\n", strrep(" ", 27), r$benchmark_not))
+    }
   }
   cat(sprintf("  Yukumluluk yili        : %15d\n", i$year))
   cat(sprintf("  Karbon fiyati          : %15s EUR/tCO2e\n",
@@ -230,7 +292,7 @@ print.cbam_estimate <- function(x, ...) {
   if (isTRUE(d$de_minimis)) {
     cat("\n"); cat(thin, "\n")
     cat("  DE MINIMIS MUAFIYETI\n\n")
-    cat(sprintf("  Ithalat miktari %s ton, 50 ton net kutle esiginin altinda.\n",
+    cat(sprintf("  Ithalat miktari %s ton, 50 ton net kutle esigini asmiyor.\n",
                 fmt_num(i$quantity)))
     cat("  Bu miktar icin CBAM yukumlulugu dogmuyor.\n\n")
     cat("  !! ONEMLI: Esik ITHALATCI BASINA ve TAKVIM YILI BOYUNCA\n")
@@ -258,7 +320,9 @@ print.cbam_estimate <- function(x, ...) {
         sprintf("%s x %s x %s", fmt_num(i$benchmark, 3),
                 fmt_num(i$quantity), fmt_num(kalan_faktor, 3)),
         paste0("-", fmt_num(d$free_allocation)), "tCO2e")
-  cat(sprintf("  %-21s (%s = 1 - CBAM faktoru %s)\n", "",
+  # Mevzuattaki "CBAM factor" ucretsiz tahsisatin KALAN payidir (Rehber
+  # No. 4 Tablo 2-1); i$cbam_factor ise onun tumleyeni, yukumluluk payi.
+  cat(sprintf("  %-21s (%s = resmi CBAM faktoru; yukumluluk payi %s)\n", "",
               fmt_num(kalan_faktor, 3), fmt_num(i$cbam_factor, 3)))
   if (i$carbon_price_paid > 0) {
     satir("Mensede odenen karbon",
@@ -331,7 +395,9 @@ print.cbam_estimate <- function(x, ...) {
   }
 
   cat("\n"); cat(line, "\n")
-  cat(sprintf("stochastic-cbam-engine | CBAM faktoru %%%s (Reg. (EU) 2023/956)\n",
+  cat(sprintf(paste0("stochastic-cbam-engine | %d: CBAM faktoru %%%s, ",
+                     "yukumluluk payi %%%s (Rehber No. 4 Tablo 2-1)\n"),
+              i$year, fmt_num(100 * (1 - i$cbam_factor), 1),
               fmt_num(100 * i$cbam_factor, 1)))
   # Veri surumu HER ZAMAN gorunur olmali. Referans tablolari Komisyon
   # tarafindan habersiz revize ediliyor; kullanicinin hangi tarihli veriyle

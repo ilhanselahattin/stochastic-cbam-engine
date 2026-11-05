@@ -343,10 +343,18 @@ expect("urun katalogu bos degil", nrow(urunler) > 0)
 expect("veri surumu tanimli", nchar(cbam_data_version()) > 0)
 expect("urun kodlari benzersiz",
        !any(duplicated(urunler$urun_kodu)))
-expect("CN kodlari benzersiz",
-       !any(duplicated(benchmarks$cn_kodu)))
+# Bir CN kodunun rota/yil gostergesine gore birden fazla satiri olabilir;
+# benzersiz olmasi gereken (CN, gosterge) ciftidir.
+expect("CN + gosterge ciftleri benzersiz",
+       !any(duplicated(paste(benchmarks$cn_kodu, benchmarks$rota_b))))
+expect("benchmark tablosu 570 CN kodunu tasiyor",
+       length(unique(benchmarks$cn_kodu)) == 570)
+expect("resmi tablonun tum deger satirlari tasiniyor (1804)",
+       nrow(benchmarks) == 1804)
+# Urun 10 haneli TARIC koduyla tanimli olabilir (gri klinker); benchmark
+# 8 hanede tutulur.
 expect("her urunun CN kodu benchmark tablosunda var",
-       all(urunler$cn_kodu %in% benchmarks$cn_kodu))
+       all(substr(urunler$cn_kodu, 1, 8) %in% benchmarks$cn_kodu))
 expect("benchmark tablosu resmi buyuklukte (500+ CN kodu)",
        nrow(benchmarks) > 500)
 expect("benchmark tablosunun tamami dogrulandi",
@@ -400,9 +408,11 @@ expect("tablonun tamami dogrulandi",
        all(trimws(dv_tablo$durum) == "dogrulandi"))
 expect("her satirin kaynagi var",
        all(nzchar(trimws(dv_tablo$kaynak_belge))))
-expect("girilmis degerler pozitif",
+# Resmi tabloda tek sifir deger var: Mali, hidrojen (0,000) - Komisyon boyle
+# yayimlamis, degistirilmez.
+expect("girilmis degerler negatif degil",
        { v <- dv_tablo$dogrudan
-         all(v[!is.na(v)] > 0) })
+         all(v[!is.na(v)] >= 0) })
 expect("uyari uretmeden yukleniyor",
        { u <- withCallingHandlers(
            { cbam_default_intensities(); TRUE },
@@ -653,6 +663,243 @@ expect("kesin modda rapor belirsizlik bolumu icermez",
          !grepl("Belirsizlik", h2, fixed = TRUE) })
 expect_error("rapor yanlis girdi tipini reddeder",
              cbam_rapor(data.frame(a = 1), file.path(tempdir(), "x.html")))
+
+# --- 2026-10-21 bagimsiz dogrulamasinda bulunan hatalar (B1-B6) ----------
+# Her test, v1.0.0'da KALAN ve duzeltmeyle GECEN davranisi kilitler.
+cat("\n== dogrulama bulgulari (B1-B6) ==\n")
+
+# B1 - Varsayilan degere mark-up (Rehber No. 3 s.113; Rehber No. 4 Tablo 2-4)
+expect("B1 mark-up 2026 %10, 2027 %20, 2028+ %30",
+       all(abs(cbam_default_markup(c(2026, 2027, 2028, 2034)) -
+                 c(.10, .20, .30, .30)) < 1e-12))
+expect("B1 gubrede mark-up %1",
+       all(abs(cbam_default_markup(c(2026, 2030), "Fertilisers") - .01) < 1e-12))
+expect("B1 Rehber 4 Tablo 2-4: 3,000 -> 3,300 / 3,600 / 3,900",
+       all(abs(3 * (1 + cbam_default_markup(2026:2028)) - c(3.3, 3.6, 3.9)) < 1e-12))
+expect_error("B1 2026 oncesi mark-up tanimsiz", cbam_default_markup(2025))
+expect("B1 CN 7208 2030: 2,428 x 1,30 = 3,1564",
+       abs(cbam_default_see("72081000", 2030)$deger - 2.428 * 1.3) < 1e-12)
+expect("B1 yil verilmezse temel deger (mark-up yok)",
+       { s <- cbam_default_see("72081000"); s$markup == 0 && s$deger == 2.428 })
+expect("B1 amonyak 2030: 2,270 x 1,01 = 2,293 (piyasadaki rakam)",
+       abs(round(cbam_default_see("28141000", 2030)$deger, 3) - 2.293) < 1e-12)
+expect("B1 CLI: CN 72081000, 250.000 t, 2030 -> 49.017.000 EUR",
+       { o <- system2("Rscript", c("hesapla.R", "--cn", "72081000", "--miktar",
+                                   "250000", "--yil", "2030", "--kesin"),
+                      stdout = TRUE, stderr = TRUE)
+         any(grepl("49.017.000 EUR", o, fixed = TRUE)) })
+expect("B1 kendi yogunlugunda mark-up uygulanmaz",
+       { o <- system2("Rscript", c("hesapla.R", "--cn", "72081000", "--yogunluk",
+                                   "1.95", "--miktar", "1000", "--yil", "2030",
+                                   "--kesin"), stdout = TRUE, stderr = TRUE)
+         any(grepl("1,950 tCO2e/ton", o, fixed = TRUE)) &&
+           !any(grepl("mark-up", o, fixed = TRUE)) })
+
+# B2 - Rota ve yila gore benchmark (Rehber No. 4 Tablo 2-2, 2-3)
+expect("B2 dusuk alasimli celik 2027 -> (F)(1) 1,673",
+       abs(cbam_benchmark_by_cn("72255020", yil = 2027, rota = "F")$benchmark - 1.673) < 1e-9)
+expect("B2 dusuk alasimli celik 2028 -> (F)(2) 1,499",
+       abs(cbam_benchmark_by_cn("72255020", yil = 2028, rota = "F")$benchmark - 1.499) < 1e-9)
+expect("B2 (C)/(F) bilesik gostergesi kodda olani secer",
+       cbam_benchmark_by_cn("72255020", yil = 2028, rota = "(C)/(F)")$rota == "(F)(2)")
+expect("B2 Tablo 2-3 ham celik rotalari: C 1,364 / D 0,475 / E 0,066",
+       all(abs(vapply(c("C", "D", "E"), function(r)
+         cbam_benchmark_by_cn("72071111", rota = r)$benchmark, 0) -
+           c(1.364, 0.475, 0.066)) < 1e-9))
+expect("B2 rota belirsizse ilk satir + aciklayici not",
+       { b <- cbam_benchmark_by_cn("72071111")
+         b$rota == "(C)" && grepl("--rota", b$not, fixed = TRUE) })
+expect("B2 2031+ icin 2028-30 degeri ve not",
+       { b <- cbam_benchmark_by_cn("25233000", yil = 2032)
+         abs(b$benchmark - 0.686) < 1e-9 && grepl("2031", b$not, fixed = TRUE) })
+expect("B2 beyaz klinker (B) secilebilir",
+       abs(cbam_benchmark_by_cn("25231000", rota = "B")$benchmark - 0.859) < 1e-9)
+
+# B3 - De minimis: 50 tonu ASMAYAN miktar muaf
+expect("B3 tam 50 ton muaf", is_de_minimis(50) && !is_de_minimis(50.001))
+
+# B4 - 2026 oncesi mali yukumluluk yok
+expect_error("B4 2025 yili hata verir (sahte maliyet yok)",
+             cbam_estimate(1e5, 2, 1.37, year = 2025, uncertainty = FALSE))
+expect("B4 CLI 2025 icin acik hata",
+       { o <- suppressWarnings(system2("Rscript", c("hesapla.R", "--cn", "72081000",
+                                   "--miktar", "1000", "--yil", "2025"),
+                      stdout = TRUE, stderr = TRUE))
+         any(grepl("2026 ya da sonrasi", o, fixed = TRUE)) })
+
+# B5 - Odenen karbon simulasyonda da dusulur
+expect("B5 deterministik 0 ise ufuk 0 simulasyonu da 0",
+       { e <- cbam_estimate(1e5, 2, 1.37, year = 2026, carbon_price = 80,
+                            carbon_price_paid = 500, cbam_reference_price = 80,
+                            theta_sdlog = 0, n_sims = 2000)
+         e$deterministic$cost_eur == 0 && all(e$simulation$draws$cost_eur == 0) })
+expect("B5 ufuk 0'da simulasyon deterministikle ayni",
+       { e <- cbam_estimate(1e5, 2, 1.37, year = 2026, carbon_price = 80,
+                            carbon_price_paid = 20, cbam_reference_price = 80,
+                            theta_sdlog = 0, n_sims = 500)
+         all(abs(e$simulation$draws$cost_eur - e$deterministic$cost_eur) < 1e-6) })
+expect("B5 odenen karbon simulasyon medyanini dusurur",
+       { a <- cbam_estimate(1e5, 2.4, 1.37, year = 2030, n_sims = 5000, seed = 3)
+         b <- cbam_estimate(1e5, 2.4, 1.37, year = 2030, n_sims = 5000, seed = 3,
+                            carbon_price_paid = 50, cbam_reference_price = 80)
+         median(b$simulation$draws$cost_eur) < median(a$simulation$draws$cost_eur) })
+
+# B6 - --cn ve --urun ayni mal icin ayni sonucu verir (sinter: dolayli dahil)
+expect("B6 sinter: --urun ve --cn ayni maliyet",
+       { m <- function(...) { o <- system2("Rscript", c("hesapla.R", ..., "--miktar",
+                               "100000", "--yil", "2030", "--kesin"),
+                               stdout = TRUE, stderr = TRUE)
+                              grep("CBAM MALIYETI", o, value = TRUE) }
+         a <- m("--urun", "demir-sinter"); b <- m("--cn", "26011200")
+         length(a) == 1 && identical(a, b) })
+expect("B6 urun yogunlugu dolayli kapsamda TOPLAM degeri kullanir",
+       { p <- cbam_product("demir-sinter", yil = 2030)
+         abs(p$varsayilan_temel - cbam_default_intensity("26011200")$toplam) < 1e-12 })
+
+# B7 - Raporda CN yolundaki resmi degerler "kullanici girdisi" gorunmemeli
+expect("B7 CN yolunda rapor resmi kaynagi ve mark-up'i gosterir",
+       { f <- file.path(tempdir(), "cbam_b7.html")
+         o <- system2("Rscript", c("hesapla.R", "--cn", "72081000", "--miktar",
+                                   "1000", "--yil", "2030", "--kesin",
+                                   "--rapor", f), stdout = TRUE, stderr = TRUE)
+         h <- paste(readLines(f, warn = FALSE), collapse = "\n")
+         grepl("CBAM-DEFAULT-VALUES", h, fixed = TRUE) &&
+           grepl("mark-up", h, fixed = TRUE) &&
+           grepl("CBAM-BENCHMARKS", h, fixed = TRUE) })
+
+# --- Tum ulkeler ve "Other countries and territories" (Rehber 3 s.114) ------
+cat("\n== mense ulke ve diger ulkeler tablosu ==\n")
+expect("varsayilan tablo 121 ulke + Other tasiyor",
+       { u <- unique(dv_tablo$ulke)
+         length(u) == 122 && CBAM_DIGER_ULKELER %in% u })
+expect("Turkiye degerleri v1.0.0 ile ayni (CN 7208 = 2,428)",
+       abs(cbam_default_intensity("72081000")$dogrudan - 2.428) < 1e-12)
+expect("Cin CN 7208 = 3,187; Hindistan = 4,280; Other = 4,049",
+       abs(cbam_default_intensity("72081000", "China")$dogrudan - 3.187) < 1e-12 &&
+         abs(cbam_default_intensity("72081000", "India")$dogrudan - 4.280) < 1e-12 &&
+         abs(cbam_default_intensity("72081000", "diger")$dogrudan - 4.049) < 1e-12)
+expect("B8 Turkiye'de '-' olan gri klinker Other tablosuna duser (1,410)",
+       { d <- cbam_default_intensity("2523100090")
+         isTRUE(d$yedek) && d$ulke == CBAM_DIGER_ULKELER && abs(d$toplam - 1.41) < 1e-12 })
+expect("B8 ulke degeri varken Other'a dusulmez",
+       !isTRUE(cbam_default_intensity("72081000")$yedek))
+expect("B8 '-' satiri daha genel onek satirina degil Other'a duser",
+       { # Turkiye'de 2523100090 '-' ; 2523 onekli degerli bir Turkiye satiri olsa
+         # bile secilmemeli - aramanin '-' satirinda durdugunu dogrula
+         d <- cbam_default_intensity("2523100090"); d$cn_kodu == "2523100090" })
+expect_error("8 haneli kod birden fazla TARIC'e ayriliyorsa hata (secim sessiz degil)",
+             cbam_default_intensity("25231000"))
+expect("10 haneli TARIC kodunda benchmark ilk 8 haneden, rota ile gri (A)",
+       { b <- cbam_benchmark_by_cn("2523100090", rota = "(A)")
+         abs(b$benchmark - 0.666) < 1e-12 })
+expect("ulke adi buyuk/kucuk harf ve Turkce karakterden bagimsiz",
+       cbam_ulke("türkiye") == "Turkiye" && cbam_ulke("CHINA") == "China")
+expect_error("taninmayan ulke adi sessizce Other'a dusmez", cbam_ulke("Chna"))
+expect_error("AB ETS ulkesi (Norvec) icin CBAM uygulanmaz", cbam_ulke("Norway"))
+expect("Ek III bolgesi (Ceuta) muaf", cbam_muaf_ulke("Ceuta"))
+# Rehber No. 4'te BASILI ornekler - Excel'den bagimsiz resmi kaynak.
+expect("Rehber 4 Tablo 2-4: Cezayir 7318 15 = 3,000 (C), mark-up'li 3,3/3,6/3,9",
+       { d <- cbam_default_intensity("73181520", "Algeria")
+         m <- vapply(2026:2028, function(y)
+           cbam_default_see("73181520", y, "Algeria")$deger, 0)
+         abs(d$toplam - 3) < 1e-12 && d$rota == "(C)" &&
+           all(abs(m - c(3.3, 3.6, 3.9)) < 1e-12) })
+expect("Rehber 4 Tablo 2-4/2-3: Cezayir rotasiyla 73181520 benchmark 1,364",
+       abs(cbam_benchmark_by_cn("73181520", yil = 2026, rota = "(C)")$benchmark - 1.364) < 1e-12)
+expect("Rehber 4 Tablo 2-3: 73181535 yila bagli 1,154 (2026-27) / 1,116 (2028-30)",
+       abs(cbam_benchmark_by_cn("73181535", yil = 2027)$benchmark - 1.154) < 1e-12 &&
+         abs(cbam_benchmark_by_cn("73181535", yil = 2028)$benchmark - 1.116) < 1e-12)
+expect("CLI gri klinker: 100.000 t, 2030 -> 11.920.080 EUR (Other + %30)",
+       { o <- system2("Rscript", c("hesapla.R", "--cn", "2523100090", "--miktar",
+                                   "100000", "--yil", "2030", "--kesin"),
+                      stdout = TRUE, stderr = TRUE)
+         any(grepl("11.920.080 EUR", o, fixed = TRUE)) &&
+           any(grepl("Other countries and territories", o, fixed = TRUE)) })
+
+# Rapor: de minimis nedeni ve esik asilirsa yuk gorunmeli; resmi tablo
+# hesabi "DOGRULANMADI" gorunmemeli; kur girilmediyse 1 TRY/EUR yazmamali.
+expect("rapor de minimis'i aciklar ve esik ustu yuku gosterir (10 t gri klinker)",
+       { f <- file.path(tempdir(), "cbam_dm.html")
+         system2("Rscript", c("hesapla.R", "--cn", "2523100090", "--miktar", "10",
+                              "--yil", "2026", "--rapor", f), stdout = FALSE, stderr = FALSE)
+         h <- paste(readLines(f, warn = FALSE), collapse = "\n")
+         grepl("De minimis muafiyeti", h, fixed = TRUE) &&
+           grepl("721,32 EUR", h, fixed = TRUE) &&
+           !grepl("DOGRULANMADI", h, fixed = TRUE) &&
+           grepl("yalnizca EUR raporlandi", h, fixed = TRUE) &&
+           grepl("CN 2523100090", h, fixed = TRUE) })
+
+expect("tam rapor 3 grafik, tablo gorunumu ve varsayimlar kutusu icerir",
+       { f <- file.path(tempdir(), "cbam_tam.html")
+         system2("Rscript", c("hesapla.R", "--cn", "2523100090", "--miktar", "100000",
+                              "--yil", "2030", "--kur", "55", "--simulasyon", "2000",
+                              "--rapor", f), stdout = FALSE, stderr = FALSE)
+         h <- paste(readLines(f, warn = FALSE), collapse = "\n")
+         length(gregexpr("<svg", h, fixed = TRUE)[[1]]) == 3 &&
+           grepl("Yillara gore CBAM maliyeti", h, fixed = TRUE) &&
+           grepl("Kendi olcumunuzle maliyet", h, fixed = TRUE) &&
+           grepl("Tablo olarak goster", h, fixed = TRUE) &&
+           grepl("Karbon fiyati 80 EUR/tCO2e: aracin varsayilani", h, fixed = TRUE) &&
+           grepl("2030: 11.920.080 EUR", h, fixed = TRUE) })
+expect("yillik yol: 2026 gri klinker 100.000 t = 7.213.200 EUR (mark-up %10, faktor %97,5)",
+       { y <- cbam_yillik_yol(100000, "2523100090", carbon_price = 80)
+         nrow(y) == 9 && abs(y$cost_eur[1] - 7213200) < 1e-6 })
+
+# --- Gozden gecirmede bulunanlar (2026-10-22) -------------------------------
+cat("\n== tutarlilik: yillik yol = manset, uc durumlar ==\n")
+expect("yillik yol, kullanici yogunlugunda da ulke rotasini kullanir",
+       { # Rota bilgisi yolda kaybolursa bu iki deger ayrisir.
+         # Cezayir ham aluminyum: ulke rotasi (L) ikincil, tablonun ilk satiri (K).
+         y <- cbam_yillik_yol(1000, "76011090", ulke = "Algeria", ei = 2,
+                              yillar = 2030)
+         r <- cbam_default_see("76011090", 2030, "Algeria")$rota
+         b <- cbam_benchmark_by_cn("76011090", yil = 2030, rota = r)
+         r == "(L)" && abs(y$benchmark - b$benchmark) < 1e-12 &&
+           abs(y$benchmark - cbam_benchmark_by_cn("76011090", yil = 2030)$benchmark) > 1e-6 })
+expect("yillik yol --dolayli-dahil ile manseti tutar",
+       { e <- cbam_estimate(1000, 2, 1.37, year = 2030, ei_indirect = 0.5,
+                            include_indirect = TRUE, uncertainty = FALSE)
+         y <- cbam_yillik_yol(1000, ei = 2, benchmark = 1.37, ei_indirect = 0.5,
+                              include_indirect = TRUE, yillar = 2030)
+         abs(y$cost_eur - e$deterministic$cost_eur) < 1e-6 })
+expect_error("run_cbam_mc de 2026 oncesini reddeder",
+             run_cbam_mc(100, 1000, 2, benchmark = 1.37, year = 2025))
+expect("karbon fiyati 0 + odenen karbon: simulasyon NaN uretmez",
+       { e <- cbam_estimate(1000, 2, 1.37, year = 2030, carbon_price = 0,
+                            carbon_price_paid = 5, cbam_reference_price = 80,
+                            n_sims = 500)
+         all(is.finite(e$simulation$draws$cost_eur)) })
+
+# --- Web sayfasi girisi (index.html -> cbam_web_rapor) ---------------------
+cat("\n== web girisi ==\n")
+expect("web raporu komut satiriyla ayni sonucu verir (49.017.000 EUR)",
+       { h <- cbam_web_rapor("72081000", 250000, 2030, n_sims = 500)
+         grepl("49.017.000", h, fixed = TRUE) &&
+           grepl("rota (C) kullanildi", h, fixed = TRUE) })
+expect("web raporunda rotaya bagli esik grafigi yok",
+       { h <- cbam_web_rapor("72081000", 250000, 2030, n_sims = 500)
+         !grepl("Kendi olcumunuzle maliyet", h, fixed = TRUE) &&
+           length(gregexpr("<svg", h, fixed = TRUE)[[1]]) == 2 })
+expect("hesaplayici.js motorun tum R dosyalarini yukler",
+       { s <- paste(readLines("hesaplayici.js", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+         all(vapply(list.files("R", pattern = "\\.R$", full.names = TRUE),
+                    function(f) grepl(paste0('"', f, '"'), s, fixed = TRUE), logical(1))) })
+expect("web raporu de minimis'i aciklar",
+       grepl("De minimis muafiyeti",
+             cbam_web_rapor("2523100090", 10, 2026), fixed = TRUE))
+expect_error("web girisi taninmayan kodu reddeder",
+             cbam_web_rapor("99999999", 100, 2030, n_sims = 100))
+expect("kendi degeri + rota yoksa komut satiri uyarir",
+       { o <- system2("Rscript", c("hesapla.R", "--cn", "72081000", "--yogunluk",
+                                   "0.5", "--miktar", "1000", "--yil", "2030",
+                                   "--kesin"), stdout = TRUE, stderr = TRUE)
+         any(grepl("--rota", o, fixed = TRUE)) })
+expect("rota verilince uyari cikmaz",
+       { o <- system2("Rscript", c("hesapla.R", "--cn", "72081000", "--yogunluk",
+                                   "0.5", "--rota", "E", "--miktar", "1000",
+                                   "--yil", "2030", "--kesin"),
+                      stdout = TRUE, stderr = TRUE)
+         !any(grepl("--rota", o, fixed = TRUE)) })
 
 cat(sprintf("\n=====================================\n"))
 cat(sprintf("Toplam: %d gecti, %d kaldi\n", passed, failed))

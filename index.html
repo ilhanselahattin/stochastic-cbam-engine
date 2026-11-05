@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CBAM Maliyet Hesaplayıcı</title>
+<meta name="description" content="AB'ye ihraç edilen bir malın CBAM maliyetini Komisyon'un varsayılan değerleriyle yaklaşık olarak hesaplar.">
+<style>
+  :root { color-scheme: light; --zemin:#fff; --yazi:#1a1a1a; --soluk:#5f5e5a; --cizgi:#d9d8d2;
+          --vurgu:#1f4e5f; --vurgu-yazi:#fff; --hata-zemin:#fff4e5; --hata-yazi:#8a4b00; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--zemin); color:var(--yazi);
+         font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+  main { max-width:860px; margin:0 auto; padding:2.5rem 1rem 3rem; }
+  h1 { font-size:1.7rem; line-height:1.2; margin:0 0 .75rem; }
+  h2 { font-size:1.05rem; margin:2rem 0 .5rem; }
+  p { margin:0 0 .75rem; }
+  ol, ul { margin:0 0 .75rem; padding-left:1.3rem; }
+  li { margin-bottom:.3rem; }
+  .giris { color:var(--soluk); max-width:640px; }
+  .formul { font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:.95rem;
+            padding:.6rem .8rem; background:#f4f4f1; border-radius:4px; overflow-x:auto; }
+  details { margin:.5rem 0 1rem; }
+  summary { cursor:pointer; font-weight:600; }
+  table { border-collapse:collapse; font-size:.92rem; margin:.5rem 0; }
+  td { padding:.25rem .8rem .25rem 0; vertical-align:top; }
+  td.s { text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  /* Hesaplayici bileseni (hesaplayici.js) */
+  .cbam-form label { font-size:.9rem; font-weight:600; }
+  .cbam-ipucu { color:var(--soluk); font-weight:400; opacity:1; }
+  .cbam-form input, .cbam-form select { padding:.55rem .6rem; color:inherit; background:var(--zemin);
+                                        border:1px solid var(--cizgi); border-radius:4px; }
+  .cbam-hesapla, .cbam-baslat { padding:.6rem 1.2rem; font:inherit; font-weight:600; cursor:pointer;
+                                background:var(--vurgu); color:var(--vurgu-yazi);
+                                border:1px solid var(--vurgu); border-radius:4px; }
+  .cbam-hesapla:disabled { opacity:.55; cursor:progress; }
+  .cbam-durum { color:var(--soluk); font-size:.9rem; }
+  .cbam-hata { padding:.8rem 1rem; margin:1rem 0; background:var(--hata-zemin);
+               color:var(--hata-yazi); border-radius:4px; }
+  .cbam-rapor { border:1px solid var(--cizgi); border-radius:4px; }
+  :focus-visible { outline:2px solid var(--vurgu); outline-offset:2px; }
+  a { color:var(--vurgu); }
+  footer { margin-top:2.5rem; padding-top:1rem; border-top:1px solid var(--cizgi);
+           color:var(--soluk); font-size:.85rem; }
+</style>
+</head>
+<body>
+<main>
+  <h1>CBAM maliyet hesaplayıcı</h1>
+  <p class="giris">AB'ye ihraç edilen bir malın Sınırda Karbon Düzenleme Mekanizması (SKDM/CBAM)
+  kapsamındaki maliyetini yaklaşık olarak hesaplar. Avrupa Komisyonu'nun yayımladığı varsayılan
+  değerleri ve benchmark tablolarını kullanır. Sonuç bir tahmindir, resmî beyanın yerine geçmez.</p>
+
+  <h2>Nasıl hesaplanır?</h2>
+  <p>İthalatçı, malın üretiminde ortaya çıkan emisyon için CBAM sertifikası satın alır. Ancak AB'deki
+  üreticilerin hâlâ aldığı ücretsiz emisyon payı kadar indirim yapılır:</p>
+  <p class="formul">Maliyet = ( Miktar × Emisyon yoğunluğu − Miktar × Benchmark × CBAM faktörü ) × Karbon fiyatı</p>
+  <ol>
+    <li><strong>Emisyon yoğunluğu:</strong> bir ton malın üretiminde çıkan CO2. Kendi ölçümünüz yoksa
+    AB'nin ülkeye göre yayımladığı varsayılan değer kullanılır ve kurala göre artırılır: 2026'da %10,
+    2027'de %20, 2028'den itibaren %30 (gübrede %1).</li>
+    <li><strong>Benchmark:</strong> AB'deki verimli bir tesisin aynı mal için emisyonu.</li>
+    <li><strong>CBAM faktörü:</strong> ücretsiz payın kalan oranı. Yıldan yıla azalır: 2026'da %97,5,
+    2030'da %51,5, 2034'te %0.</li>
+    <li>Parantezin içi sıfırın altına düşerse maliyet sıfırdır. Bir ithalatçının yıllık toplamı
+    50 tonu aşmıyorsa yükümlülük doğmaz.</li>
+  </ol>
+  <details>
+    <summary>Örnek: 1.000 ton sıcak haddelenmiş rulo, Türkiye, 2030, 80 EUR</summary>
+    <table>
+      <tr><td>Emisyon yoğunluğu</td><td>2,428 × 1,30</td><td class="s">3,156 tCO2e/t</td></tr>
+      <tr><td>Gömülü emisyon</td><td>1.000 × 3,156</td><td class="s">3.156,4 tCO2e</td></tr>
+      <tr><td>Ücretsiz pay indirimi</td><td>1.000 × 1,370 × 0,515</td><td class="s">− 705,6 tCO2e</td></tr>
+      <tr><td>Sertifika</td><td></td><td class="s">2.450,9 tCO2e</td></tr>
+      <tr><td>Maliyet</td><td>2.450,9 × 80 EUR</td><td class="s">196.068 EUR</td></tr>
+    </table>
+  </details>
+
+  <div data-cbam-hesaplayici data-otomatik></div>
+
+  <h2>Bilmeniz gerekenler</h2>
+  <ul>
+    <li>Bu araç tahmin verir. CBAM beyanı yerine geçmez.</li>
+    <li>Satın alınan ara ürünlerin (öncüllerin) emisyonu ayrıca hesaba katılmaz.</li>
+    <li>Elektrik kapsam dışıdır.</li>
+    <li>Raporda ayrıca karbon fiyatı ve kurdaki olası değişimlere göre bir aralık gösterilir.</li>
+    <li>Girdiğiniz bilgiler tarayıcınızda kalır, hiçbir yere gönderilmez.</li>
+  </ul>
+
+  <h2>Geliştirme durumu</h2>
+  <p>Bu, aracın ilk sürümüdür ve geliştirilmeye devam ediyor. Kendi ölçüm değerinizi girme ve
+  üretim rotası seçme özellikleri eklenecek. İleride Avrupa Komisyonu'nun yayımladığı CBAM
+  sertifika fiyatı ve döviz kuru gibi verilerin düzenli olarak otomatik güncellenmesi
+  planlanıyor; böylece bu değerleri elle girmeniz gerekmeyecek.</p>
+
+  <footer>
+    Geliştiren: Selahattin İlhan
+    (<a href="https://orcid.org/0009-0007-4824-752X">ORCID</a>) ·
+    Lisans: AGPL-3.0 ·
+    <a href="https://github.com/ContinentOfGrinch/stochastic-cbam-engine">Kaynak kod</a> ·
+    <a href="https://doi.org/10.5281/zenodo.22116999">Zenodo arşivi</a>
+  </footer>
+</main>
+<script type="module" src="hesaplayici.js"></script>
+</body>
+</html>

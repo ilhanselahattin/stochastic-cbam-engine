@@ -49,6 +49,8 @@ run_cbam_mc <- function(n_sims = 10000,
                         horizon = NULL,
                         carbon_price_0 = 75,
                         fx_0 = 1,
+                        carbon_price_paid = 0,
+                        cbam_reference_price = NULL,
                         seed = NULL,
                         ...) {
   # Tohum yalnizca bu fonksiyonun icinde etkili olmali; cagiranin oturumundaki
@@ -76,6 +78,9 @@ run_cbam_mc <- function(n_sims = 10000,
   if (length(year) != 1) {
     stop("year tek bir yil olmali; birden fazla yil icin ayri simulasyon calistirin.")
   }
+  if (year < 2026) {
+    stop("year 2026 ya da sonrasi olmali: CBAM mali yukumlulugu 2026'da baslar.")
+  }
 
   # Zaman ufku yukumluluk yilindan turetilir. Bunu kullaniciya birakmak,
   # 2034 senaryosunun tek yillik belirsizlikle kosulmasina ve riskin
@@ -101,12 +106,29 @@ run_cbam_mc <- function(n_sims = 10000,
                             fx_0 = fx_0, horizon = horizon, ...)
 
   # 4) Yasal yukumluluk
+  # Mensede odenen karbon deterministik hesapla AYNI sekilde dusulmeli;
+  # v1.0.0'da buraya aktarilmiyordu (deterministik 0 EUR iken simulasyon
+  # milyonlarca EUR gosterebiliyordu). Sertifika referans fiyati piyasayla
+  # birlikte olceklenir: ufuk 0'da deterministik sonuca birebir esittir,
+  # RP = karbon fiyati verildiginde odenen karbon EUR olarak aynen dusulur.
+  rp_sim <- NULL
+  if (carbon_price_paid > 0) {
+    if (is.null(cbam_reference_price) || cbam_reference_price <= 0) {
+      stop("carbon_price_paid verildiginde cbam_reference_price de gerekli.")
+    }
+    # Baslangic fiyati 0 ise olcekleme tanimsiz (0/0); referans fiyat sabit kalir.
+    rp_sim <- if (carbon_price_0 > 0) {
+      cbam_reference_price * market$carbon_price / carbon_price_0
+    } else cbam_reference_price
+  }
   factor_y <- cbam_phase_in_factor(year)
   certs <- certificates_due(
     embedded = embedded,
     quantity = quantity,
     benchmark = benchmark,
-    cbam_factor = factor_y
+    cbam_factor = factor_y,
+    carbon_price_paid = carbon_price_paid,
+    cbam_reference_price = rp_sim
   )
 
   # 5) Maliyet
@@ -187,7 +209,7 @@ print.cbam_mc <- function(x, ...) {
   cat("Stokastik CBAM Maruziyet Simulasyonu\n")
   cat("------------------------------------\n")
   cat(sprintf("Simulasyon sayisi : %s\n", fmt_num(x$inputs$n_sims)))
-  cat(sprintf("Yukumluluk yili   : %d (CBAM faktoru: %.1f%%)\n",
+  cat(sprintf("Yukumluluk yili   : %d (yukumluluk payi: %.1f%%)\n",
               x$inputs$year, 100 * x$inputs$cbam_factor))
   cat(sprintf("Zaman ufku        : %g yil (baz yil: %d)\n",
               x$inputs$horizon, x$inputs$base_year))

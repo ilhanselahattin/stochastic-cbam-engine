@@ -23,3 +23,7 @@ NOTICE   text eol=lf
 # depo "R projesi" olarak gorunsun.
 data-raw/**    linguist-documentation
 data/*.csv     linguist-generated
+
+# Tarayici sayfasi depoyu dil istatistiginde R projesi olmaktan cikarmasin.
+index.html       linguist-documentation
+hesaplayici.js   linguist-documentation

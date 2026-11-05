@@ -1,20 +1,30 @@
 # Mevzuat Doğrulama Kontrol Listesi
 
-Kodun mevzuata dair **8 iddiası** ve her birinin doğrulama durumu.
+Kodun mevzuata dair **12 iddiası** ve her birinin doğrulama durumu.
 
-**Son doğrulama: 2026-08-23** · Kaynak: bu klasördeki Rehber No. 3 ve No. 4
+**Son doğrulama: 2026-10-21** · Kaynak: bu klasördeki Rehber No. 1, 3 ve 4
 (Avrupa Komisyonu, 14 Ağustos 2026 — kesin dönem için ilk yayın).
+
+> **2026-10-21 notu.** D1–D8 listesi kodun *yaptığı* hesaplardan türetilmişti;
+> bu yüzden kodun *hiç yapmadığı* bir kural (D9, mark-up) görünmedi. Liste
+> bu tarihte rehberlerden yeniden türetildi; resmî Excel dosyaları motordan
+> bağımsız bir okuyucuyla karşılaştırıldı. D9 ve D10 eklendi, D4 ve D5'te
+> sınır hataları bulundu.
 
 | # | İddia | Durum |
 |---|---|---|
 | D1 | Phase-in takvimi | ✅ **DOĞRULANDI — hata bulundu ve düzeltildi** |
 | D2 | Sertifika hesabı formülü | ✅ **DOĞRULANDI — eksik terim eklendi** |
-| D3 | Menşede ödenen karbon düşümü | ✅ **DOĞRULANDI — hata bulundu ve düzeltildi** |
-| D4 | De minimis eşiği | ✅ **DOĞRULANDI — hata bulundu ve düzeltildi** |
-| D5 | 2026 öncesi mali yükümlülük yok | ✅ Doğrulandı |
+| D3 | Menşede ödenen karbon düşümü | ✅ **DOĞRULANDI — hata bulundu ve düzeltildi** (2026-10-21: simülasyona da uygulandı) |
+| D4 | De minimis eşiği | ✅ **DOĞRULANDI — hata bulundu ve düzeltildi** (2026-10-21: tam 50 ton muaf) |
+| D5 | 2026 öncesi mali yükümlülük yok | ✅ **2026-10-21: hata bulundu ve düzeltildi** |
 | D6 | Dolaylı emisyon kapsamı | ✅ **DOĞRULANDI** |
-| D7 | Benchmark değerleri | ✅ **DOĞRULANDI — 570 CN kodu resmî tablodan** |
+| D7 | Benchmark değerleri | ✅ **DOĞRULANDI — 570 CN kodu, 1.804 değer resmî tablodan** |
 | D8 | CN kodları | ✅ **DOĞRULANDI — resmî tablodan geldi** |
+| **D9** | **Varsayılan değer mark-up'ı** | ✅ **2026-10-21: kodda YOKTU, eklendi** |
+| **D10** | **Rota ve yıla bağlı benchmark seçimi** | ✅ **2026-10-21: kodda YOKTU, eklendi** |
+| **D11** | **Ülke değeri yoksa "Other countries and territories"** | ✅ **2026-10-21: kodda YOKTU, eklendi** |
+| **D12** | **AB ETS'ye bağlı ülkeler ve Ek III bölgeleri muaf** | ✅ **2026-10-21: eklendi** |
 
 ---
 
@@ -149,6 +159,9 @@ Eşiğin üç kritik özelliği — ikisi kodda hiç yoktu:
 Araç tek bir miktar için hesap yaptığından ithalatçının yıllık toplamını
 bilemez; çıktı bunu açıkça söylüyor.
 
+**2026-10-21 — sınır hatası:** "does not exceed" → tam 50 ton **muaftır**.
+Kod `< 50` kullanıyordu; `<= 50` olarak düzeltildi.
+
 ---
 
 ## ✅ D5 — 2026 öncesi mali yükümlülük yok
@@ -156,7 +169,12 @@ bilemez; çıktı bunu açıkça söylüyor.
 **Kaynak:** Rehber No. 3, s.8: geçiş dönemi (1 Ekim 2023 – 31 Aralık 2025)
 "learning and data-collection phase"; kesin dönem 1 Ocak 2026'da başlıyor ve
 mali yükümlülük o zaman doğuyor. Tablo 2-1'de 2025 için CBAM factor %100
-(tahsisat tam) → yükümlülük payı 0. **Kod doğru.**
+(tahsisat tam) → yükümlülük payı 0.
+
+**2026-10-21 — hata bulundu:** yükümlülük payı 0 olsa da formül, benchmark'ı
+aşan emisyonu yine sertifikaya çeviriyordu; `--yil 2025` ile 100.000 t,
+2 tCO2e/t için **5,04 milyon EUR** sahte maliyet çıkıyordu. Artık 2026 öncesi
+yıl açık bir hata mesajıyla reddediliyor.
 
 ---
 
@@ -259,6 +277,104 @@ Default Values Act — CIR (EU) 2026/1740 (Sürüm 2, 06.08.2026).**
 Kullanıcının kendi ölçtüğü değeri `--yogunluk` ile vermesi hâlâ önerilen
 yoldur: resmî varsayılanlar mevzuat gereği ihtiyatlı (yüksek) seçilmiştir,
 dolayısıyla gerçek tesis değeri genellikle daha düşük maliyet verir.
+
+---
+
+## ✅ D9 — Varsayılan değer mark-up'ı — **KODDA YOKTU, EKLENDİ (2026-10-21)**
+
+**Kaynak:** Rehber No. 3, s.113–114 (Default Values Act, CIR (EU) 2025/2621);
+Rehber No. 4, Tablo 2-4.
+
+> *"The default values for CBAM goods shall be increased by a proportionately
+> designed percentage 'mark-up' ... 10% in 2026, 20% in 2027, and 30% from
+> 2028 onwards. A lower mark-up applies to the fertiliser sector. This
+> mark-up is 1% from 2026 onwards."*
+
+Komisyon'un XLSX dosyası **temel** değeri verir (sütunlar: direct / indirect /
+total). Resmî Ek I'de mark-up'lı değerler ayrı sütunlardadır — Tablo 2-4
+örneği: temel 3,000 → 3,300 / 3,600 / 3,900.
+
+**Etki (Türkiye, 559 CN, 80 EUR/tCO2e):** v1.0.0 maliyeti medyan olarak
+%16 (2026) – %35 (2028) düşük gösteriyordu. CN 72081000, 250.000 t, 2030:
+34.449.000 → **49.017.000 EUR**.
+
+**Bağımsız teyitler:** CarbonEmit'in CN 7208 için kullandığı 2,67 =
+2,428 × 1,10; piyasada görülen amonyak değeri 2,293 = 2,270 × 1,01.
+İkisi de daha önce "girdi farkı" ya da "tabloda yok" diye not edilmişti.
+
+**Uygulama:** `cbam_default_markup()`, `cbam_default_see()`. Mark-up yalnızca
+varsayılan değere uygulanır; kullanıcının ölçtüğü değere asla. Çıktıda ayrı
+satırda gösterilir.
+
+---
+
+## ✅ D10 — Rota ve yıla bağlı benchmark — **KODDA YOKTU, EKLENDİ (2026-10-21)**
+
+**Kaynak:** Rehber No. 4, Tablo 2-2, Tablo 2-3, Şekil 2-4 (s.13–21).
+
+Resmî benchmark sayfası 1.810 satırdır; 570 CN kodunun **525'inde** birden
+fazla değer vardır. Gösterge kodları:
+
+| Kod | Anlam |
+|---|---|
+| (1) / (2) | Üretim yılı 2026–27 / 2028–30 |
+| (A) / (B) | Gri / beyaz klinker-çimento |
+| (C)(D)(E) | Karbon çeliği: BF/BOF, DRI/EAF, hurda/EAF |
+| (F)(G)(H) | Düşük alaşımlı çelik: BF/BOF, DRI/EAF, hurda/EAF |
+| (J) | Yüksek alaşımlı çelik (EAF) |
+| (K) / (L) | Birincil / ikincil alüminyum |
+
+Varsayılan değerle çalışılırken rota, Default Values Act Ek I'de ülke
+sayfasının son sütunundan okunur (Türkiye: (C), (F), (C)/(F), (K)).
+
+**v1.0.0'ın durumu:** her CN için tablonun yalnızca ilk satırı tutuluyordu.
+Türkiye rotası ilk satırla örtüştüğünden 2026–27 tamamen doğruydu; 2028'den
+itibaren **176 CN'de** 2026–27 değeri kullanılıyordu (etki medyan %0,3).
+
+**Uygulama:** `data/benchmarks.csv` artık 1.804 değerin tamamını taşır;
+`cbam_benchmark_by_cn(cn, sutun, yil, rota)` seçer. Rota belirlenemezse ilk
+satır kullanılır ve çıktı alternatifleri listeler (`--rota` ile seçilir).
+2031+ için resmî değer yoktur; 2028–30 değeri kullanılır ve not düşülür.
+
+---
+
+## ✅ D11 — Ülke değeri yoksa "Other countries and territories" — **KODDA YOKTU, EKLENDİ (2026-10-21)**
+
+**Kaynak:** Rehber No. 3, s.113–114.
+
+> *"Where the CBAM good is not explicitly listed for the country of production
+> in Annex I or where it is listed but the relevant field shows a '-', CBAM
+> declarants have to use the default values from the table 'Other countries
+> and territories' in Annex I."*
+
+Varsayılan değer XLSX'i 121 ülke sayfası, "Other Countries and Territories"
+ve "Annex IV" (menşei bilinmeyen **öncüller** için en yüksek değerler) taşır.
+v1.0.0 yalnızca Türkiye sayfasını kullanıyordu ve "-" görünce "değer yok"
+diye duruyordu. Türkiye'de çimento satırlarının tamamı "-"dir.
+
+**Uygulama:** `data/varsayilan_yogunluk.csv` 122 tablonun tamamını taşır
+(11.670 satır; 760 "-" satırı **boş değerle** tutulur ki arama orada durup
+"Other"a geçsin — daha genel bir önek satırına değil). Türkiye'nin değerli
+250 satırı v1.0.0'daki elle aktarımla metin olarak birebir aynıdır. Annex IV
+öncül modeline kadar kullanılmaz.
+
+**Bağımsız teyit:** Rehber No. 4'te basılı Tablo 2-4 (Cezayir, CN 7318 15:
+3,000 / N/A / 3,000 / (C)) ve Tablo 2-3 benchmark'ları motorla birebir aynı.
+
+**Gözlem (hata değil):** 10.910 değerli satırın 710'unda yayımlanan toplam,
+doğrudan + dolaylı toplamından ±0,01 farklıdır (Komisyon bileşenleri ayrı
+yuvarlamış; çoğu gübre). Motor yayımlanan **toplam** değeri kullanır.
+
+---
+
+## ✅ D12 — Muaf menşeler — **EKLENDİ (2026-10-21)**
+
+**Kaynak:** Rehber No. 1 dn.3; Rehber No. 4 dn.11 (Tüzük Ek III nokta 1).
+
+AB ETS'yi uygulayan (İzlanda, Norveç, Lihtenştayn) ya da ona tam bağlı
+(İsviçre) ülkeler ile Büsingen, Heligoland, Livigno, Ceuta, Melilla menşeli
+mallar CBAM dışındadır. `--ulke` bunlardan biri olursa araç hesap yapmaz ve
+nedenini söyler. Tüzük metni elde edilince Ek III listesi yeniden kontrol edilecek.
 
 ---
 

@@ -202,5 +202,6 @@ is_de_minimis <- function(quantity, threshold = 50, sektor = NULL) {
                                        "elektrik")) {
     return(rep(FALSE, length(quantity)))
   }
-  quantity < threshold
+  # "does not cumulatively exceed" (Rehber No. 1, s.23): tam 50 ton muaftir.
+  quantity <= threshold
 }

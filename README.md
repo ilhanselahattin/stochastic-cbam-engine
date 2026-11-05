@@ -26,7 +26,7 @@ belirsizliğini de içeren bir dağılım verir.
 
 Piyasadaki kapalı kutu (black-box) danışmanlık araçlarının aksine, bu altyapı **açık bilim (open-science)** ve **tekrarlanabilirlik (reproducibility)** ilkeleriyle inşa edilmiştir.
 
-* **Odak Ülke:** Türkiye
+* **Menşe:** AB varsayılan değer tablosundaki 121 ülkenin tamamı + menşei bilinmeyen/listede olmayan ülkeler için "Other countries and territories" (`--ulke`, liste için `--ulkeler`). Varsayılan: Türkiye.
 * **Kapsam:** CBAM'in yürürlükteki tüm sektörleri — demir-çelik, alüminyum,
   çimento, gübre, hidrojen (570 CN kodu). Elektrik ayrı hesap yolu gerektirdiği
   için henüz kapsam dışı.
@@ -35,7 +35,12 @@ Piyasadaki kapalı kutu (black-box) danışmanlık araçlarının aksine, bu alt
 
 ## Hızlı Başlangıç
 
-Gereksinim: **R ≥ 4.0**. Harici paket bağımlılığı yoktur — yalnızca `base` ve `stats` kullanılır.
+Kurulum istemeyen sade sürüm tarayıcıda çalışır:
+<https://continentofgrinch.github.io/stochastic-cbam-engine/>. Yalnızca AB'nin
+varsayılan değerlerini kullanır; kendi ölçüm değeri ve üretim rotası seçimi
+ileride eklenecek.
+
+Komut satırı için gereksinim: **R ≥ 4.0**. Harici paket bağımlılığı yoktur — yalnızca `base` ve `stats` kullanılır.
 
 ### Hesap makinesi
 
@@ -50,27 +55,45 @@ Rscript hesapla.R --cn 72081000 --miktar 250000 \
 
 ```
 CN 72081000 | Flat-rolled products of iron or non-alloy steel...
-Benchmark Column B = 1,370 tCO2e/ton | Kaynak: CBAM-BENCHMARKS-2026-02-06
+Benchmark Column B (C) = 1,370 tCO2e/ton | Kaynak: CBAM-BENCHMARKS-2026-02-06
 Varsayilan yogunluk = 2,428 tCO2e/ton (Turkiye, dogrudan)
+  + 2030 mark-up'i %30  ->  3,156 tCO2e/ton hesapta kullanilir
   Kaynak: CBAM-DEFAULT-VALUES-2026-08-06, Turkiye sayfasi | CN 7208
   !! Bu mevzuatin VARSAYILAN degeridir, tesisinizin degeri degildir.
 
 HESAP
-  Gomulu emisyon        250.000 x 2,428          =       607.000 tCO2e
+  Gomulu emisyon        250.000 x 3,156          =       789.100 tCO2e
   Ucretsiz tahsisat     1,370 x 250.000 x 0,515  =      -176.388 tCO2e
-                        (0,515 = 1 - CBAM faktoru 0,485)
+                        (0,515 = resmi CBAM faktoru; yukumluluk payi 0,485)
   --------------------------------------------------------------------
-  SERTIFIKA YUKUMLULUGU                          =       430.613 tCO2e
-                                                   (emisyonun %70,9'i)
+  SERTIFIKA YUKUMLULUGU                          =       612.713 tCO2e
+                                                   (emisyonun %77,6'i)
 
-  CBAM MALIYETI         430.613 x 80,00 EUR      =    34.449.000 EUR
-                        x 48,00 TRY/EUR          = 1.653.552.000 TRY
-  Ton basina yuk                                 =        137,80 EUR/ton
+  CBAM MALIYETI         612.713 x 80,00 EUR      =    49.017.000 EUR
+                        x 48,00 TRY/EUR          = 2.352.816.000 TRY
+  Ton basina yuk                                 =        196,07 EUR/ton
 ```
 
 **Hiçbir sayı bizim tahminimiz değil.** Benchmark Komisyon'un benchmark
 tablosundan, emisyon yoğunluğu Default Values Act'ten, phase-in faktörü
 Rehber No. 4'ten geliyor — hepsi çıktıda kaynağıyla gösteriliyor.
+
+**Varsayılan değerler mevzuat gereği artırılır (mark-up):** 2026'da %10,
+2027'de %20, 2028'den itibaren %30; gübrede %1 (Rehber No. 3, s.113). Araç
+bunu otomatik uygular ve çıktıda ayrı satırda gösterir. Kendi ölçtüğünüz
+değere mark-up uygulanmaz.
+
+**Benchmark rota ve yıla göre seçilir.** 570 CN kodunun 525'inde resmî tabloda
+birden fazla değer var (yüksek fırın / DRI / hurda-EAF, düşük alaşımlı çelik,
+birincil / ikincil alüminyum, gri / beyaz klinker; 2026–27 ve 2028–30). Araç
+ülkenin varsayılan rotasını kullanır; `--rota C|D|E|...` ile değiştirilebilir.
+
+**Ülke sayfasında değer yoksa "Other countries and territories" kullanılır.**
+Mal menşe ülkenin tablosunda hiç yoksa ya da değeri "-" ise mevzuat bu tabloyu
+şart koşar (Rehber No. 3, s.114) — araç bunu otomatik yapar ve çıktıda söyler.
+Örnek: Türkiye sayfasında çimento değerleri "-"dir; gri klinker için
+`--cn 2523100090` "Other" değeri 1,410'u kullanır. AB ETS'ye bağlı ülkeler
+(İzlanda, Norveç, Lihtenştayn, İsviçre) CBAM dışındadır; araç bunu da söyler.
 
 `--sutun` benchmark sütununu seçer ve **fark büyüktür**:
 
@@ -117,9 +140,10 @@ Bu araç neyi bilmediğini söyler. Bir sonuca güvenmeden önce şunlara bakın
 |---|---|
 | **Öncüller (precursors) modellenmiyor** | Araç ürünü **tek üretim süreci** sayar. Girdi (slab, kütük, öncül) satın alıyorsanız, satın aldığınız malın gömülü emisyonu hesaba **girmez** ve sonuç eksik çıkar. Cevherden kendi üreten entegre tesisler için geçerlidir. |
 
-| **De minimis kümülatif eşiktir** | 50 ton net kütle, ithalatçı başına ve **tüm CN kodları toplamında** yıllık. Araç tek bir miktar görür; yıllık toplamınızı siz takip etmelisiniz. |
+| **De minimis kümülatif eşiktir** | 50 tonu aşmayan net kütle muaftır; eşik ithalatçı başına ve **tüm CN kodları toplamında** yıllıktır. Araç tek bir miktar görür; yıllık toplamınızı siz takip etmelisiniz. |
+| **2031 sonrası benchmark** | Resmî tabloda yıla bağlı benchmark'lar yalnızca 2030'a kadar yayımlandı. 2031+ için 2028–30 değeri kullanılır ve çıktıda not düşülür. |
 | **Elektrik kapsam dışı** | Ücretsiz tahsisatı sıfır, birimi MWh; ayrı bir hesap yolu gerektirir. |
-| **Varsayılan yoğunluklar tesisinize ait değildir** | Default Values Act'ten gelen resmî değerlerdir ve bilerek **yüksek** seçilmişlerdir. **Kendi ölçtüğünüz değeri `--yogunluk` ile verin** — maliyetiniz büyük ihtimalle düşer. |
+| **Varsayılan yoğunluklar tesisinize ait değildir** | Default Values Act'ten gelen resmî değerlerdir, bilerek **yüksek** seçilmişlerdir ve üstüne yıla göre %10–30 mark-up eklenir. **Kendi ölçtüğünüz değeri `--yogunluk` ile verin** — mark-up uygulanmaz, maliyetiniz büyük ihtimalle düşer. |
 | **Uzak yıl belirsizlik kuyruğu** | Karbon fiyatı Geometrik Brown Hareketi ile modellenir; ortalamaya dönüş ve AB Piyasa İstikrar Rezervi yoktur. Uzak yıllarda %95 üst sınırı gerçekçi olmayan fiyatlara uzanır. Bütçe için medyanı ve yakın yılları kullanın. |
 | **Çimento ve gübrede birim farklı** | Ton ürün değil: çimento *ton klinker*, gübre *kg azot*. Araç uyarı basar ama dönüşümü sizin yapmanız gerekir. |
 
@@ -134,16 +158,16 @@ Hesabın kullandığı her referans değer **kaynağını taşır** ve çıktıd
 
 ```
 CN 72081000 | Flat-rolled products of iron or non-alloy steel...
-Benchmark Column B = 1,370 tCO2e/ton
-Kaynak: CBAM-BENCHMARKS-2026-02-06, CN 72081000, Column B
+Benchmark Column B (C) = 1,370 tCO2e/ton
+Kaynak: CBAM-BENCHMARKS-2026-02-06, CN 72081000, Column B (C)
 ```
 
 İki referans tablosu da resmî ve doğrulanmış durumda:
 
 | Tablo | Kayıt | Kaynak |
 |---|---|---|
-| `data/benchmarks.csv` | 570 CN kodu | CBAM Benchmarks tablosu (06.02.2026) |
-| `data/varsayilan_yogunluk.csv` | 283 CN kodu, Türkiye | Default Values Act — **CIR (EU) 2026/1740** (Sürüm 2, 06.08.2026) |
+| `data/benchmarks.csv` | 570 CN kodu, 1.804 değer (rota ve yıl ayrımıyla) | CBAM Benchmarks tablosu (06.02.2026) |
+| `data/varsayilan_yogunluk.csv` | 121 ülke + Other, 11.670 satır | Default Values Act — **CIR (EU) 2026/1740** (Sürüm 2, 06.08.2026) |
 
 > **Sürüm önemlidir.** Varsayılan emisyon değerleri CIR (EU) 2025/2621 ile
 > yayımlandı, **CIR (EU) 2026/1740** ile revize edildi. Araç Sürüm 2'yi
@@ -212,7 +236,7 @@ cbam_var(sim, level = 0.95)
 Test ve demo:
 
 ```bash
-Rscript tests/test_engine.R                   # 172 test
+Rscript tests/test_engine.R                   # 234 test
 Rscript analysis/01_demo_turkiye_celik.R      # EAF vs BF-BOF senaryo demosu
 ```
 
@@ -269,13 +293,14 @@ R/
   reference.R     Referans veri okuyucu, kaynak izleme, doğrulama uyarısı
   calculator.R    Kullanıcı girdisi → okunabilir tek cevap (hesap makinesi)
   report.R        Paylaşılabilir HTML rapor (bağımlılıksız, tek dosya)
+  web.R           Tarayıcı hesaplayıcısının (hesaplayici.js) R girişi
   utils.R         Sayı/aralık formatlama
 hesapla.R         Komut satırı hesap makinesi (--yardim, --urunler, --rapor)
 research/         ARAŞTIRMA EKİ — hesap makinesi buraya hiç dokunmaz
   mrio.R          Leontief tersi, E_CBAM/E_MRIO kapsam farkı
 data/             İşlenmiş referans veri (CSV, her satır kaynağıyla)
   urunler.csv     Ürün kataloğu → CN kodu eşlemesi
-  varsayilan_yogunluk.csv  Default Values Act, Türkiye (283 CN kodu)
+  varsayilan_yogunluk.csv  Default Values Act, 121 ülke + Other countries
   benchmarks.csv  AB ETS ürün benchmark'ları
   VERSION         Veri paketi sürümü
 data-raw/
@@ -283,7 +308,7 @@ data-raw/
   exiobase/       Büyük MRIO matrisleri (versiyonlanmaz)
   firma/          Firma düzeyi veri (versiyonlanmaz)
 tests/
-  test_engine.R   172 test (base R, harici test paketi gerektirmez)
+  test_engine.R   234 test (base R, harici test paketi gerektirmez)
 LICENSE                        AGPL-3.0 tam metni
 LICENSE-ADDITIONAL-TERMS.md    Atıf ek şartı (AGPL §7(b)) + marka notu
 NOTICE                         Telif, atıf ve veri kaynağı bildirimleri
@@ -307,23 +332,41 @@ Katmanlar ayrıdır: `R/` altındaki motor saf hesap yapar ve hiçbir yere yazma
 - [x] Referans veri katmanı, kaynak izleme ve doğrulama uyarısı
 - [x] Paylaşılabilir HTML rapor (`--rapor`)
 
-**v1.0 için kalan:**
-
-- [ ] Resmî AB belgelerinden değerlerin doğrulanması (`data-raw/mevzuat/`)
 - [x] Sürekli entegrasyon (GitHub Actions) — 3 işletim sistemi, R 4.2 ve güncel
 - [x] Reel/nominal ayrımı — kur sürüklemesi enflasyon farkından türetiliyor
+- [x] Resmî AB belgelerinden doğrulama — 12 mevzuat iddiası ([`MEVZUAT_DOGRULAMA.md`](data-raw/mevzuat/MEVZUAT_DOGRULAMA.md))
+- [x] Resmî benchmark tablosunun tamamı — 570 CN kodu, 1.804 değer, rota ve yıl ayrımıyla
+- [x] Resmî varsayılan değerler — 121 ülke + "Other countries and territories", mark-up dahil
+- [x] Beş sektör: demir-çelik, alüminyum, çimento, gübre, hidrojen
+- [x] Grafikli rapor: yıllara göre maliyet, başabaş (kendi ölçümüyle maliyet), belirsizlik
 
-**v1.0 sonrası:**
+### Aşama 1 — AB hesaplama kurallarına tam uyum (proje tanımı)
 
-- [ ] Duyarlılık ayrıştırması ve başabaş analizi
-- [ ] Dekarbonizasyon yatırım kararı modülü (kümülatif maliyet vs. NPV)
-- [ ] Çimento, gübre, hidrojen için doğrulanmış değerler
-- [ ] Elektrik modülü (ayrı hesap yolu gerektiriyor)
-- [ ] MRIO entegrasyonu ve EXIOBASE veri alım katmanı
-- [ ] Gerçek AB ETS benchmark tablosunun paketlenmesi
-- [ ] Çoklu sektör desteği (çimento, alüminyum, gübre, elektrik, hidrojen)
-- [ ] Duyarlılık analizi (Sobol indeksleri)
-- [ ] Görselleştirme katmanı ve raporlama şablonu
+Proje, AB'nin hesaplama kurallarının **tamamını**, resmî kaynakla doğrulanmış
+olarak uyguladığında tamamlanmış sayılır. Kalanlar:
+
+- [ ] **Öncül zinciri (karmaşık mallar)** — gömülü emisyon SEE = (AttrEm + Σ Mᵢ·SEEᵢ) / AL
+      (Rehber No. 3 §4.2.2.3), ücretsiz tahsisat SEFA = SFA + Σ mᵢ·SEFAᵢ (Rehber No. 4
+      Denklem 4); AB menşeli öncülün SEFA'sı sıfır; tedarikçi ağırlıklı ortalaması;
+      menşei bilinmeyen öncül için Ek IV; gerçek veride Column A
+- [ ] **Fonksiyonel birim dönüşümü** — gübrede kg N, çimentoda ton klinker
+      (Rehber No. 3 §4.9.1.1)
+- [ ] **Karışık çimento (2523 90)** — beyaz/gri bileşime göre ağırlıklı benchmark (Rehber No. 4 s.14)
+- [ ] **Sertifika fiyatı kuralı** — CIR (EU) 2025/2548 *(yasal metin bekleniyor)*
+- [ ] **Şebeke elektriği emisyon faktörü** — Default Values Act Ek II *(yasal metin bekleniyor)*
+- [ ] **Elektrik** — ayrı hesap yolu (MWh, ücretsiz tahsisat yok; Rehber No. 5f, DV Act Ek III)
+- [ ] **Bağlayıcı yasal metinlerle son doğrulama** — Tüzük 2023/956 (konsolide), CIR 2025/2547,
+      2025/2620, 2025/2621 + 2026/1740, 2025/2548. Bugüne kadarki doğrulama Komisyon
+      rehberlerine dayanır; rehberler bağlayıcı değildir.
+
+### Aşama 2 — araştırma katmanları (Aşama 1'den sonra)
+
+AB uyumunun parçası değildir; aracı akademik ve karar destek amaçlı genişletir.
+
+- [ ] **MRIO entegrasyonu ve EXIOBASE/WIOD veri katmanı** — firma düzeyinden ekonomi
+      düzeyine: CBAM yükünün tedarik zincirine yayılımı (temel fonksiyonlar `research/mrio.R`)
+- [ ] **Sobol duyarlılık indeksleri** — belirsizliğin hangi girdiden geldiği
+- [ ] **Dekarbonizasyon yatırım modülü** — azaltım yatırımı vs. kümülatif CBAM maliyeti (NPV)
 
 ## Atıf
 

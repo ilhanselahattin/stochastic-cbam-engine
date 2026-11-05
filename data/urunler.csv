@@ -5,5 +5,5 @@ celik-kutuk,Celik kutuk (yari mamul),demir-celik,72071190,hayir,0.20,GUIDANCE-3,
 demir-sinter,Aglomere demir cevheri (sinter),demir-celik,26011200,evet,0.20,GUIDANCE-3,s.19-20 (Ek II disinda),dogrulandi,Dolayli emisyon KAPSAMDA
 alu-ham,Ham aluminyum (alasimsiz),aluminyum,76011090,hayir,0.15,GUIDANCE-3,s.19-20 (dolayli kapsam),dogrulandi,Yogunluk Default Values Act'ten gelir
 alu-alasim,Ham aluminyum alasimi,aluminyum,76012080,hayir,0.15,GUIDANCE-3,s.19-20 (dolayli kapsam),dogrulandi,Yogunluk Default Values Act'ten gelir
-cimento-klinker,Cimento klinkeri,cimento,25231000,evet,0.20,GUIDANCE-3,s.19-20 (Ek II disinda),dogrulandi,BIRIM TON KLINKER
+cimento-klinker,Gri cimento klinkeri,cimento,2523100090,evet,0.20,GUIDANCE-3,s.19-20 (Ek II disinda),dogrulandi,BIRIM TON KLINKER
 hidrojen,Hidrojen,hidrojen,28041000,hayir,0.20,GUIDANCE-3,s.19-20 (Ek II'de),dogrulandi,Yogunluk Default Values Act'ten gelir
