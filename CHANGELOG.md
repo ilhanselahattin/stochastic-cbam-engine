@@ -6,6 +6,27 @@ Bu projede [semantik sürümleme](https://semver.org/lang/tr/) kullanılır.
 
 ## [1.1.0] — yayımlanmadı
 
+### Tarayıcı sürümü: WebR yerine bağımlılıksız JavaScript motoru
+
+Tarayıcı hesaplayıcısı artık R'ı tarayıcıda çalıştırmıyor (WebR, ~45 MB ve dış
+sunucudan yükleme). Hesap `cbam-motor.js` ile yapılıyor; veriler R motorunun
+ürettiği `data/web/` JSON dosyalarından okunuyor. Sayfa dışarıdan hiçbir şey
+yüklemiyor ve anında açılıyor.
+
+- `tools/web_veri.R`: veri dosyalarını ve 177 örnek girdi için R motorunun
+  sonuçlarını üretir; `--kontrol` dosyaların CSV'lerle güncel olduğunu denetler.
+- `tests/test_web.mjs`: JavaScript sonuçlarını R sonuçlarıyla karşılaştırır.
+  Kesin hesap (yoğunluk, mark-up, benchmark ve rota seçimi, sertifika, maliyet,
+  2026–2034 yolu) birebir aynı; belirsizlik yüzdelikleri farklı rastgele sayı
+  üreteciyle %4 tolerans içinde.
+- Arayüz: alan yanında doğrulama mesajları, de minimis bilgisi, TARIC'e ayrılan
+  kodlarda seçim, CN önerileri, sıralanabilir ve yapışkan başlıklı tablolar,
+  satır içi SVG grafikler, indirilebilir tek dosyalık rapor (künyeli),
+  Türkçe/İngilizce.
+- Bilinen davranış (değiştirilmedi, R ile aynı): web yolunda ürün referansı
+  olmadığı için de minimis kontrolü sektörsüz yapılır; hidrojen de 50 ton
+  altında muaf görünür. Komut satırının `--urun` yolu bunu doğru uygular.
+
 **Önemli düzeltme: v1.0.0, varsayılan değerle yapılan hesaplarda CBAM
 maliyetini düşük gösteriyordu.** Mevzuatın zorunlu kıldığı mark-up
 uygulanmıyordu; Türkiye için sapma medyan %16 (2026) ile %35 (2028)
