@@ -1,6 +1,6 @@
 # Stochastic CBAM Engine
 
-[![testler](https://github.com/ContinentOfGrinch/stochastic-cbam-engine/actions/workflows/test.yml/badge.svg)](https://github.com/ContinentOfGrinch/stochastic-cbam-engine/actions/workflows/test.yml)
+[![testler](https://github.com/ilhanselahattin/stochastic-cbam-engine/actions/workflows/test.yml/badge.svg)](https://github.com/ilhanselahattin/stochastic-cbam-engine/actions/workflows/test.yml)
 [![lisans: AGPL v3](https://img.shields.io/badge/lisans-AGPL--3.0--or--later-blue.svg)](LICENSE)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22116999.svg)](https://doi.org/10.5281/zenodo.22116999)
 
@@ -36,7 +36,7 @@ Piyasadaki kapalı kutu (black-box) danışmanlık araçlarının aksine, bu alt
 ## Hızlı Başlangıç
 
 Kurulum istemeyen sade sürüm tarayıcıda çalışır:
-<https://continentofgrinch.github.io/stochastic-cbam-engine/>. Yalnızca AB'nin
+<https://ilhanselahattin.github.io/stochastic-cbam-engine/>. Yalnızca AB'nin
 varsayılan değerlerini kullanır; kendi ölçüm değeri ve üretim rotası seçimi
 ileride eklenecek.
 

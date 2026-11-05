@@ -4,7 +4,7 @@
 // Gomulebilir CBAM hesaplayicisi. Kullanim (herhangi bir sayfada):
 //
 //   <div data-cbam-hesaplayici></div>
-//   <script type="module" src="https://continentofgrinch.github.io/stochastic-cbam-engine/hesaplayici.js"></script>
+//   <script type="module" src="https://ilhanselahattin.github.io/stochastic-cbam-engine/hesaplayici.js"></script>
 //
 // Hesap motorun kendi R kodu ve veri tablolariyla, tarayicida (WebR) yapilir;
 // dosyalar bu betigin yanindan okunur. Agir kisim "Hesaplayiciyi baslat"a

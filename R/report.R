@@ -612,7 +612,7 @@ cbam_rapor <- function(x, dosya, baslik = "CBAM Maliyet Raporu", firma = NULL,
   <p><strong>stochastic-cbam-engine</strong> &middot; Selahattin
   &#304;lhan &middot; ORCID 0009-0007-4824-752X<br>
   A&#199;IK KAYNAK &middot; AGPL-3.0-or-later &middot;
-  github.com/ContinentOfGrinch/stochastic-cbam-engine</p>
+  github.com/ilhanselahattin/stochastic-cbam-engine</p>
   <p>Bu rapor a&#231;&#305;k kaynakl&#305; bir hesap motoruyla
   &#252;retilmi&#351;tir; y&#246;ntemin tamam&#305; denetlenebilir.
   Beyan, yat&#305;r&#305;m veya fiyatlama karar&#305; i&#231;in tek

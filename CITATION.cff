@@ -22,7 +22,7 @@ authors:
   - family-names: "İlhan"
     given-names: "Selahattin"
     orcid: "https://orcid.org/0009-0007-4824-752X"
-repository-code: "https://github.com/ContinentOfGrinch/stochastic-cbam-engine"
+repository-code: "https://github.com/ilhanselahattin/stochastic-cbam-engine"
 license: AGPL-3.0-or-later
 version: 1.0.0
 date-released: "2026-08-26"
