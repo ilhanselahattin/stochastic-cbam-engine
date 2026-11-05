@@ -8,8 +8,10 @@
 
 #  Web sayfasi girisi
 #
-#  index.html bu fonksiyonu tarayicida (WebR) cagirir. Hesap motorun kendi
-#  fonksiyonlariyla yapilir; sayfada ayri bir hesap yoktur.
+#  Web formunun (index.html, hesaplayici.js) yaptigi hesabin R'daki karsiligi.
+#  Tarayici R calistirmaz: cbam-motor.js bu adimlarin birebir aktarimidir ve
+#  tools/web_veri.R ayni adimlarla altin sonuclar uretir; tests/test_web.mjs
+#  iki motorun ayni sonucu verdigini dogrular.
 #
 #  Bilincli sinir: formda kendi olcum degeri ve uretim rotasi yoktur. Kendi
 #  degeriyle calisan bir EAF ureticisi icin ulkenin varsayilan rotasi yanlis

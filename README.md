@@ -35,10 +35,28 @@ Piyasadaki kapalı kutu (black-box) danışmanlık araçlarının aksine, bu alt
 
 ## Hızlı Başlangıç
 
-Kurulum istemeyen sade sürüm tarayıcıda çalışır:
-<https://ilhanselahattin.github.io/stochastic-cbam-engine/>. Yalnızca AB'nin
+Kurulum istemeyen sade sürüm tarayıcıda çalışır (`index.html`). Yalnızca AB'nin
 varsayılan değerlerini kullanır; kendi ölçüm değeri ve üretim rotası seçimi
 ileride eklenecek.
+
+Tarayıcı sürümü dışarıdan hiçbir şey yüklemez ve R çalıştırmaz: hesap
+`cbam-motor.js` ile yapılır, veriler `data/web/` altındaki JSON dosyalarından
+okunur. O dosyaları R motorunun kendisi üretir (`Rscript tools/web_veri.R`);
+`node tests/test_web.mjs`, JavaScript motorunun sonuçlarını R motorunun 177
+örnek girdideki çıktılarıyla karşılaştırır. Kesin hesap birebir aynı olmak
+zorundadır; belirsizlik yüzdelikleri farklı bir rastgele sayı üreteciyle
+çekildiği için %4 tolerans içinde olmalıdır.
+
+Başka bir sayfaya gömmek için `hesaplayici.js`, `cbam-motor.js` ve `data/web/`
+klasörünü aynı dizine koyun:
+
+```html
+<div data-cbam-hesaplayici></div>            <!-- lang="en" ile İngilizce -->
+<script type="module" src="hesaplayici.js"></script>
+```
+
+Görünüm dayatılmaz: tüm parçalar `cbam-` önekli sınıf taşır, yerleşim
+kuralları sıfır öncelikle eklenir ve renkler `--cbam-*` değişkenleriyle verilir.
 
 Komut satırı için gereksinim: **R ≥ 4.0**. Harici paket bağımlılığı yoktur — yalnızca `base` ve `stats` kullanılır.
 
@@ -293,9 +311,13 @@ R/
   reference.R     Referans veri okuyucu, kaynak izleme, doğrulama uyarısı
   calculator.R    Kullanıcı girdisi → okunabilir tek cevap (hesap makinesi)
   report.R        Paylaşılabilir HTML rapor (bağımlılıksız, tek dosya)
-  web.R           Tarayıcı hesaplayıcısının (hesaplayici.js) R girişi
+  web.R           Web formunun hesabı (tarayıcı motorunun referansı)
   utils.R         Sayı/aralık formatlama
 hesapla.R         Komut satırı hesap makinesi (--yardim, --urunler, --rapor)
+index.html        Tarayıcı sürümü (kurulum gerektirmez)
+hesaplayici.js    Gömülebilir arayüz: form, tablolar, grafikler, rapor indirme
+cbam-motor.js     Tarayıcı hesap motoru (R motorunun web yolunun aktarımı)
+tools/web_veri.R  data/web/ JSON dosyalarını ve altın sonuçları üretir
 research/         ARAŞTIRMA EKİ — hesap makinesi buraya hiç dokunmaz
   mrio.R          Leontief tersi, E_CBAM/E_MRIO kapsam farkı
 data/             İşlenmiş referans veri (CSV, her satır kaynağıyla)
@@ -303,12 +325,14 @@ data/             İşlenmiş referans veri (CSV, her satır kaynağıyla)
   varsayilan_yogunluk.csv  Default Values Act, 121 ülke + Other countries
   benchmarks.csv  AB ETS ürün benchmark'ları
   VERSION         Veri paketi sürümü
+  web/            Tarayıcı için JSON (tools/web_veri.R üretir; elle düzenlemeyin)
 data-raw/
   mevzuat/        Resmî AB belgeleri — değiştirilmemiş, versiyonlanır
   exiobase/       Büyük MRIO matrisleri (versiyonlanmaz)
   firma/          Firma düzeyi veri (versiyonlanmaz)
 tests/
   test_engine.R   234 test (base R, harici test paketi gerektirmez)
+  test_web.mjs    Tarayıcı motoru = R motoru mu? (Node, paket gerektirmez)
 LICENSE                        AGPL-3.0 tam metni
 LICENSE-ADDITIONAL-TERMS.md    Atıf ek şartı (AGPL §7(b)) + marka notu
 NOTICE                         Telif, atıf ve veri kaynağı bildirimleri

@@ -880,10 +880,16 @@ expect("web raporunda rotaya bagli esik grafigi yok",
        { h <- cbam_web_rapor("72081000", 250000, 2030, n_sims = 500)
          !grepl("Kendi olcumunuzle maliyet", h, fixed = TRUE) &&
            length(gregexpr("<svg", h, fixed = TRUE)[[1]]) == 2 })
-expect("hesaplayici.js motorun tum R dosyalarini yukler",
-       { s <- paste(readLines("hesaplayici.js", warn = FALSE, encoding = "UTF-8"), collapse = "\n")
-         all(vapply(list.files("R", pattern = "\\.R$", full.names = TRUE),
-                    function(f) grepl(paste0('"', f, '"'), s, fixed = TRUE), logical(1))) })
+# Tarayici surumu disaridan hicbir sey yuklememeli (WebR kaldirildi). Kod
+# icindeki tek adres kunyedeki kaynak kod baglantisidir; ayrinti testi:
+# node tests/test_web.mjs (JavaScript motoru = R motoru).
+expect("tarayici dosyalari disaridan bir sey yuklemez",
+       { s <- unlist(lapply(c("hesaplayici.js", "cbam-motor.js"), readLines,
+                            warn = FALSE, encoding = "UTF-8"))
+         s <- s[!grepl("^\\s*//", s)]                       # yorum satirlari haric
+         adres <- unlist(regmatches(s, gregexpr("https?://[^\"'` )]+", s)))
+         length(adres) > 0 &&
+           all(adres == "https://github.com/ilhanselahattin/stochastic-cbam-engine") })
 expect("web raporu de minimis'i aciklar",
        grepl("De minimis muafiyeti",
              cbam_web_rapor("2523100090", 10, 2026), fixed = TRUE))

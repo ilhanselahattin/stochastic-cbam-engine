@@ -64,3 +64,13 @@ jobs:
       - name: Demo calisiyor mu
         run: Rscript analysis/01_demo_turkiye_celik.R
         shell: bash
+
+      # Tarayici surumu: JSON veriler CSV'lerle guncel mi, JavaScript motoru R
+      # motoruyla ayni sonucu veriyor mu? (Node her GitHub makinesinde kurulu.)
+      - name: Tarayici verisi guncel mi
+        run: Rscript tools/web_veri.R --kontrol
+        shell: bash
+
+      - name: Tarayici motoru = R motoru
+        run: node tests/test_web.mjs
+        shell: bash
