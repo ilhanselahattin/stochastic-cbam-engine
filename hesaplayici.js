@@ -291,8 +291,7 @@ function raporParcalari(s, T, f, { etkilesimli }) {
     ${pr(T.pVeri, s.veri_surumu, T.resmi)}
     </tbody></table></div></section>`;
 
-  const kunye = `<footer class="cbam-kunye"><p><strong>${KUNYE.ad}</strong> · ${KUNYE.yazar} · ORCID ${KUNYE.orcid}<br>
-    ${esc(T.acikKaynak)} · ${KUNYE.lisans} · <a href="${KUNYE.kaynak}">${esc(T.kaynakKod)}</a></p><p>${esc(T.kunye)}</p></footer>`;
+  const kunye = `<footer class="cbam-kunye"><p><a href="${KUNYE.kaynak}">${esc(T.kaynakKod)}</a></p><p>${esc(T.kunye)}</p></footer>`;
 
   const urun = `CN ${see.dv.cn_kodu} – ${see.dv.aciklama} – ${T.menseK} ${ulkeAdi(see.dv.mense)}`;
   return { urun, govde: kutular.join("") + varsayim + kartlar + hesap + yillik + belirsizlik + kaynak + kunye };
